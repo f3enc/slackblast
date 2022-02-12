@@ -218,7 +218,7 @@ async def command(ack, body, respond, client, logger):
                 "action_id": "title",
                 "placeholder": {
                     "type": "plain_text",
-                    "text": "Snarky Title?"
+                    "text": "Title?"
                 }
             },
             "label": {
@@ -308,12 +308,12 @@ async def command(ack, body, respond, client, logger):
                 "initial_value": "None",
                 "placeholder": {
                     "type": "plain_text",
-                    "text": "FNGs"
+                    "text": "Not in Slack"
                 }
             },
             "label": {
                 "type": "plain_text",
-                "text": "List untaggable names separated by commas (FNGs, Willy Lomans, etc.)"
+                "text": "List PAX not in Slack separated by commas"
             }
         },
         {
@@ -339,7 +339,7 @@ async def command(ack, body, respond, client, logger):
                 "type": "plain_text_input",
                 "multiline": True,
                 "action_id": "plain_text_input-action",
-                "initial_value": "WARMUP: \nTHE THANG: \nMARY: \nANNOUNCEMENTS: \nCOT: ",
+                "initial_value": "WARMUP: \n\nTHE THANG: \n\nMARY: \n\nANNOUNCEMENTS: \n\nCOT: ",
                 "placeholder": {
                     "type": "plain_text",
                     "text": "Tell us what happened\n\n"
@@ -347,30 +347,30 @@ async def command(ack, body, respond, client, logger):
             },
             "label": {
                 "type": "plain_text",
-                "text": "The Moleskine",
+                "text": "Summary",
                 "emoji": True
             }
-        },
-        {
-            "type": "divider"
-        },
-        {
-            "type": "section",
-            "block_id": "destination",
-            "text": {
-                "type": "plain_text",
-                "text": "Choose where to post this"
-            },
-            "accessory": {
-                "action_id": "destination-action",
-                "type": "static_select",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Choose where"
-                },
-                "initial_option": initial_channel_option,
-                "options": channel_options
-            }
+#        },
+#        {
+#            "type": "divider"
+#        },
+#        {
+#            "type": "section",
+#            "block_id": "destination",
+#            "text": {
+#                "type": "plain_text",
+#                "text": "Choose where to post this"
+#            },
+#            "accessory": {
+#                "action_id": "destination-action",
+#                "type": "static_select",
+#                "placeholder": {
+#                    "type": "plain_text",
+#                    "text": "Choose where"
+#                },
+#                "initial_option": initial_channel_option,
+#                "options": channel_options
+#            }
         }
     ]
 
@@ -400,7 +400,7 @@ async def command(ack, body, respond, client, logger):
             "callback_id": "backblast-id",
             "title": {
                 "type": "plain_text",
-                "text": "Create a Backblast"
+                "text": "F3 ENC Backblast"
             },
             "submit": {
                 "type": "plain_text",
@@ -424,7 +424,7 @@ async def view_submission(ack, body, logger, client):
     fngs = result["fngs"]["fng-action"]["value"]
     count = result["count"]["count-action"]["value"]
     moleskine = result["moleskine"]["plain_text_input-action"]["value"]
-    destination = result["destination"]["destination-action"]["selected_option"]["value"]
+#    destination = result["destination"]["destination-action"]["selected_option"]["value"]
     email_to = safeget(result, "email", "email-action", "value")
     the_date = result["date"]["datepicker-action"]["selected_date"]
 
@@ -432,12 +432,13 @@ async def view_submission(ack, body, logger, client):
 
     logger.info(result)
 
-    chan = destination
+#    chan = destination
+    chan = the_ao
     if chan == 'THE_AO':
         chan = the_ao
 
     logger.info('Channel to post to will be {} because the selected destination value was {} while the selected AO in the modal was {}'.format(
-        chan, destination, the_ao))
+        the_q, chan, the_ao))
 
     ao_name = await get_channel_name(the_ao, logger, client)
     q_name = (await get_user_names([the_q], logger, client) or [''])[0]
@@ -447,14 +448,14 @@ async def view_submission(ack, body, logger, client):
     try:
         # formatting a message
         # todo: change to use json object
-        header_msg = f"*Slackblast*: "
+        header_msg = f"*Backblast*: "
         title_msg = f"*" + title + "*"
 
         date_msg = f"*DATE*: " + the_date
         ao_msg = f"*AO*: <#" + the_ao + ">"
         q_msg = f"*Q*: <@" + the_q + ">"
         pax_msg = f"*PAX*: " + pax_formatted
-        fngs_msg = f"*FNGs*: " + fngs
+        fngs_msg = f"*PAX not in Slack*: " + fngs
         count_msg = f"*COUNT*: " + count
         moleskine_msg = moleskine
 
@@ -465,6 +466,11 @@ async def view_submission(ack, body, logger, client):
             msg = header_msg + "\n" + title_msg + "\n" + body
             await client.chat_postMessage(channel=chan, text=msg)
             logger.info('\nMessage posted to Slack! \n{}'.format(msg))
+            # post in 1stF Channel if not selected as the ao location
+            chan_1stf = config('FIRST_F_CHANNEL_ID', default='')
+            if chan != chan_1stf:            
+                await client.chat_postMessage(channel=chan_1stf, text=msg)
+                logger.info('\nMessage posted to Slack! \n{}'.format(msg))
     except Exception as slack_bolt_err:
         logger.error('Error with posting Slack message with chat_postMessage: {}'.format(
             slack_bolt_err))
@@ -478,7 +484,7 @@ async def view_submission(ack, body, logger, client):
             ao_msg = f"AO: " + (ao_name or '').replace('the', '').title()
             q_msg = f"Q: " + q_name
             pax_msg = f"PAX: " + pax_names
-            fngs_msg = f"FNGs: " + fngs
+            fngs_msg = f"PAX not in Slack: " + fngs
             count_msg = f"COUNT: " + count
             moleskine_msg = moleskine
 
