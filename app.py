@@ -318,6 +318,25 @@ async def command(ack, body, respond, client, logger):
         },
         {
             "type": "input",
+            "block_id": "ec_pax",
+            "optional": True,
+            "element": {
+                "type": "multi_users_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Tag the EC PAX",
+                    "emoji": True
+                },
+                "action_id": "multi_users_select-action"
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "The EC PAX",
+                "emoji": True
+            }
+        },
+        {
+            "type": "input",
             "block_id": "count",
             "element": {
                 "type": "plain_text_input",
@@ -423,12 +442,14 @@ async def view_submission(ack, body, logger, client):
     pax = result["the_pax"]["multi_users_select-action"]["selected_users"]
     fngs = result["fngs"]["fng-action"]["value"]
     count = result["count"]["count-action"]["value"]
+    ecpax = result["ec_pax"]["multi_users_select-action"]["selected_users"]
     moleskine = result["moleskine"]["plain_text_input-action"]["value"]
 #    destination = result["destination"]["destination-action"]["selected_option"]["value"]
     email_to = safeget(result, "email", "email-action", "value")
     the_date = result["date"]["datepicker-action"]["selected_date"]
 
     pax_formatted = await get_pax(pax)
+    ecpax_formatted = await get_pax(ecpax)
 
     logger.info(result)
 
@@ -443,21 +464,26 @@ async def view_submission(ack, body, logger, client):
     ao_name = await get_channel_name(the_ao, logger, client)
     q_name = (await get_user_names([the_q], logger, client) or [''])[0]
     pax_names = ', '.join(await get_user_names(pax, logger, client) or [''])
+    ec_names = ', '.join(await get_user_names(ecpax, logger, client) or [''])
 
     msg = ""
     try:
         # formatting a message
         # todo: change to use json object
+        chan_ec = config('EC_CHANNEL_ID', default='')
         header_msg = f"*Backblast*: "
         title_msg = f"*" + title + "*"
 
         date_msg = f"*DATE*: " + the_date
         ao_msg = f"*AO*: <#" + the_ao + ">"
+        ecao_msg = f"*AO*: <#" + chan_ec + ">"
         q_msg = f"*Q*: <@" + the_q + ">"
         pax_msg = f"*PAX*: " + pax_formatted
         fngs_msg = f"*PAX not in Slack*: " + fngs
         count_msg = f"*COUNT*: " + count
+        ec_msg = f"*PAX*: " + ecpax_formatted
         moleskine_msg = moleskine
+        ec_moleskine_msg = f"EC Ruck or Run"
 
         # Message the user via the app/bot name
         if config('POST_TO_CHANNEL', cast=bool):
@@ -466,10 +492,12 @@ async def view_submission(ack, body, logger, client):
             msg = header_msg + "\n" + title_msg + "\n" + body
             await client.chat_postMessage(channel=chan, text=msg)
             logger.info('\nMessage posted to Slack! \n{}'.format(msg))
-            # post in 1stF Channel if not selected as the ao location
-            chan_1stf = config('FIRST_F_CHANNEL_ID', default='')
-            if chan != chan_1stf:            
-                await client.chat_postMessage(channel=chan_1stf, text=msg)
+            # post in EC Channel if EC PAX listed
+            if len(ecpax) != 0:
+                body = make_body(date_msg, ecao_msg, q_msg, ec_msg,
+                                 fngs_msg, count_msg, ec_moleskine_msg)
+                msg = header_msg + "\n" + title_msg + "\n" + body            
+                await client.chat_postMessage(channel=chan_ec, text=msg)
                 logger.info('\nMessage posted to Slack! \n{}'.format(msg))
     except Exception as slack_bolt_err:
         logger.error('Error with posting Slack message with chat_postMessage: {}'.format(
@@ -486,7 +514,9 @@ async def view_submission(ack, body, logger, client):
             pax_msg = f"PAX: " + pax_names
             fngs_msg = f"PAX not in Slack: " + fngs
             count_msg = f"COUNT: " + count
+            ec_msg = f"PAX: " + ec_names            
             moleskine_msg = moleskine
+            ec_moleskine_msg = f"EC Ruck or Run"
 
             body_email = make_body(
                 date_msg, ao_msg, q_msg, pax_msg, fngs_msg, count_msg, moleskine_msg)
