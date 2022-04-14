@@ -478,6 +478,7 @@ async def view_submission(ack, body, logger, client):
         ao_msg = f"*AO*: <#" + the_ao + ">"
         ecao_msg = f"*AO*: <#" + chan_ec + ">"
         q_msg = f"*Q*: <@" + the_q + ">"
+        ecq_msg = f"*Q*: <@U03BWNYJQ3S>"
         pax_msg = f"*PAX*: " + pax_formatted
         fngs_msg = f"*PAX not in Slack*: " + fngs
         count_msg = f"*COUNT*: " + count
@@ -494,7 +495,7 @@ async def view_submission(ack, body, logger, client):
             logger.info('\nMessage posted to Slack! \n{}'.format(msg))
             # post in EC Channel if EC PAX listed
             if len(ecpax) != 0:
-                body = make_body(date_msg, ecao_msg, q_msg, ec_msg,
+                body = make_body(date_msg, ecao_msg, ecq_msg, ec_msg,
                                  fngs_msg, count_msg, ec_moleskine_msg)
                 msg = header_msg + "\n" + title_msg + "\n" + body            
                 await client.chat_postMessage(channel=chan_ec, text=msg)
@@ -510,6 +511,7 @@ async def view_submission(ack, body, logger, client):
 
             date_msg = f"DATE: " + the_date
             ao_msg = f"AO: " + (ao_name or '').replace('the', '').title()
+            ecq_msg = f"*Q*: <@U03BWNYJQ3S>"
             q_msg = f"Q: " + q_name
             pax_msg = f"PAX: " + pax_names
             fngs_msg = f"PAX not in Slack: " + fngs
